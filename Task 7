@@ -1,0 +1,89 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+struct Item {
+    string name;
+    int cost;
+    double ratio;
+};
+vector<Item> greedy(vector<Item> items, int cap) {
+    sort(items.begin(), items.end(), [](Item a, Item b) {
+        return a.ratio > b.ratio;
+    });
+    vector<Item> pick;
+    int total = 0;
+    for (auto &it : items) {
+        if (total + it.cost <= cap) {
+            pick.push_back(it);
+            total += it.cost;
+        }
+    }
+    return pick;
+}
+vector<Item> dp(vector<Item> items, int cap) {
+    int n = items.size();
+    vector<vector<int>> dpTab(n + 1, vector<int>(cap + 1, 0));
+    for (int i = 1; i <= n; i++) {
+        for (int w = 1; w <= cap; w++) {
+            if (items[i - 1].cost <= w) {
+                dpTab[i][w] = max(items[i - 1].cost +
+                                  dpTab[i - 1][w - items[i - 1].cost],
+                                  dpTab[i - 1][w]);
+            } else {
+                dpTab[i][w] = dpTab[i - 1][w];
+            }
+        }
+    }
+    vector<Item> pick;
+    int w = cap;
+    for (int i = n; i > 0; i--) {
+        if (dpTab[i][w] != dpTab[i - 1][w]) {
+            pick.push_back(items[i - 1]);
+            w -= items[i - 1].cost;
+        }
+    }
+    return pick;
+}
+int main() {
+    int budget;
+    cout << "Shopping Optimizer" << endl;
+    cout << "Enter your budget in EGP: ";
+    cin >> budget;
+    vector<Item> items;
+    while (true) {
+        string name;
+        int cost;
+        string ans;
+        cout << endl;
+        cout << "Enter item name or type done to finish: ";
+        cin >> name;
+        if (name == "done") break;
+        cout << "Enter item price in EGP: ";
+        cin >> cost;
+        items.push_back({name, cost, 1.0 / cost});
+        cout << "Do you want to add another item? choose either yes or no: ";
+        cin >> ans;
+        if (ans == "no") break;
+    }
+    auto greedyPick = greedy(items, budget);
+    cout << endl;
+    cout << "Greedy Result:" << endl;
+    int total = 0;
+    for (auto &it : greedyPick) {
+        cout << "- " << it.name << " : " << it.cost << " EGP" << endl;
+        total += it.cost;
+    }
+    cout << "Total Greedy Spending: " << total << " EGP" << endl;
+    auto dpPick = dp(items, budget);
+    cout << endl;
+    cout << "Dynamic Programming Result:" << endl;
+    int total2 = 0;
+    for (auto &it : dpPick) {
+        cout << "- " << it.name << " : " << it.cost << " EGP" << endl;
+        total2 += it.cost;
+    }
+    cout << "Total DP Spending: " << total2 << " EGP" << endl;
+    cout << endl;
+    return 0;
+}
