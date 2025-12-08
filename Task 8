@@ -1,0 +1,122 @@
+#include <bits/stdc++.h>
+using namespace std;
+using Stack = vector<int>;
+using State = vector<Stack>;
+using Move = pair<int,int>;
+int k, h;
+unordered_map<string,int> colormap;
+vector<string> colorlist;
+int getcolorid(const string &c) {
+    if (colormap.count(c)) return colormap[c];
+    int id = colorlist.size();
+    colormap[c] = id;
+    colorlist.push_back(c);
+    return id;
+}
+string getcolorname(int id) {
+    return colorlist[id];
+}
+void printstate(const State &state) {
+    for (int i = 0; i < (int)state.size(); ++i) {
+        cout << "Stack " << i << ": ";
+        for (int c : state[i]) cout << getcolorname(c) << " ";
+        cout << endl;
+    }
+    cout << "-----" << endl;
+}
+set<State> visitedset;
+bool isgoal(const State &state) {
+    for (auto &s : state) {
+        if (s.empty()) continue;
+        int color = s.back();
+        for (int c : s)
+            if (c != color) return false;
+        if ((int)s.size() != h) return false;
+    }
+    return true;
+}
+vector<Move> generatemoves(const State &state) {
+    vector<Move> moves;
+    for (int i = 0; i < k; ++i) {
+        if (state[i].empty()) continue;
+        int color = state[i].back();
+        for (int j = 0; j < k; ++j) {
+            if (i == j) continue;
+            if ((int)state[j].size() >= h) continue;
+            if (state[j].empty() || state[j].back() == color)
+                moves.push_back({i, j});
+        }
+    }
+    return moves;
+}
+State applymove(const State &state, const Move &m) {
+    State newstate = state;
+    int i = m.first, j = m.second;
+    int ball = newstate[i].back();
+    newstate[i].pop_back();
+    newstate[j].push_back(ball);
+    return newstate;
+}
+bool depthsearch(const State &state, vector<Move> &path, Move prevmove, int &steps, int maxsteps=400000) {
+    if (++steps > maxsteps) return false;
+    if (visitedset.count(state)) return false;
+    visitedset.insert(state);
+    if (isgoal(state)) return true;
+    vector<Move> moves = generatemoves(state);
+    sort(moves.begin(), moves.end(), [&](const Move &a, const Move &b) {
+        int scoreA = 0, scoreB = 0;
+        if (!state[a.second].empty()) scoreA += 10 + state[a.second].size();
+        if (!state[b.second].empty()) scoreB += 10 + state[b.second].size();
+        if (prevmove.first == a.second && prevmove.second == a.first) scoreA -= 1000;
+        if (prevmove.first == b.second && prevmove.second == b.first) scoreB -= 1000;
+        return scoreA > scoreB;
+    });
+    for (auto &m : moves) {
+        State newstate = applymove(state, m);
+        path.push_back(m);
+        if (depthsearch(newstate, path, m, steps, maxsteps))
+            return true;
+        path.pop_back();
+    }
+    visitedset.erase(state);
+    return false;
+}
+State readinput() {
+    cout << "Number of stacks: ";
+    cin >> k;
+    cout << "Stack capacity: ";
+    cin >> h;
+    State stacks(k);
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    for (int i = 0; i < k; ++i) {
+        cout << "Stack " << i << " (bottom to top, colors): ";
+        string line; 
+        getline(cin, line);
+        stringstream ss(line);
+        string color;
+        while (ss >> color) {
+            int cid = getcolorid(color);
+            stacks[i].push_back(cid);
+        }
+    }
+    return stacks;
+}
+void printmoves(const vector<Move> &moves) {
+    for (int i = 0; i < (int)moves.size(); ++i) {
+        cout << i+1 << ": Move top ball from stack "
+             << moves[i].first << " TO stack " << moves[i].second << endl;
+    }
+}
+int main() {
+    State initial = readinput();
+    vector<Move> solution;
+    visitedset.clear();
+    int steps = 0;
+    if (depthsearch(initial, solution, {-1,-1}, steps)) {
+        cout << endl << "Solution found in " << solution.size() << " moves:" << endl;
+        printmoves(solution);
+    } else {
+        cout << "No solution found (searched " << steps << " steps)." << endl;
+    }
+    return 0;
+}
